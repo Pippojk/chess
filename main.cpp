@@ -14,7 +14,7 @@ char board[8][8];
 std::map<char, SDL_Texture*> textures;
 
 int offsetX, offsetY, boardSize;
-
+int Sx, Sy = -1;
 void loadFEN(const std::string& fen, char board[8][8]){
     int i = 0, j = 0;
     for(char c : fen){
@@ -51,6 +51,14 @@ void drawBoard(SDL_Renderer* renderer, int w, int h){
             // pezzo
             SDL_Texture* tex = textures[current];
             SDL_Rect rect = {offsetX + j*square,offsetY + i*square,square,square};
+
+            if(Sx == j && Sy == i){
+                SDL_SetRenderDrawColor(renderer, 221, 255, 107, 255);
+                SDL_RenderFillRect(renderer, &rect);
+                int mouseX, mouseY;
+                SDL_GetMouseState(&mouseX, &mouseY);
+                rect.x = mouseX-square/2; rect.y = mouseY-square/2;
+            }
 
             if(tex){
                 SDL_RenderCopy(renderer, tex, nullptr, &rect);
@@ -110,7 +118,6 @@ int main(){
 
     bool needed = true;
     bool running = true;
-    int Sx, Sy;
     SDL_Event event;
     while(running){
         while(SDL_PollEvent(&event)){
@@ -147,6 +154,8 @@ int main(){
                     board[y][x] = board[Sy][Sx];
                     board[Sy][Sx] = '.';
                 }
+
+                Sy = -1; Sx = -1;
             }
         }
 
