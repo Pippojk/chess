@@ -7,16 +7,36 @@
 int bk1[4] = {105, 220, 76, 255};
 int bk2[4] = {47,47, 47, 255};
 
-std::string fen = "Rk1n1r1r/2p1qp2/1p1p4/3Bp1p1/2P1P3/3P1QBP/5PP1/5RK1";
+std::string fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR";
+
+char board[8][8];
 
 std::map<char, SDL_Texture*> textures;
 
+int offsetX, offsetY, boardSize;
+
+void loadFEN(const std::string& fen, char board[8][8]){
+    int i = 0, j = 0;
+    for(char c : fen){
+        if(c == '/'){ i++; j = 0; continue; }
+        if(std::isdigit(c)){
+            j += c - '0';
+            for(int k = 0; k< c-'0'; k++){
+                board[i][k] = '.';
+            }
+        } else {
+            board[i][j] = c;
+            j++;
+        }
+    }
+}
+
 void drawBoard(SDL_Renderer* renderer, int w, int h){
     int square = std::min(w, h) / 8;
-    int boardSize = square * 8;
+    boardSize = square * 8;
 
-    int offsetX = (w - boardSize) / 2;
-    int offsetY = (h - boardSize) / 2;
+    offsetX = (w - boardSize) / 2;
+    offsetY = (h - boardSize) / 2;
 
     int iMap = 0;
 
@@ -26,19 +46,7 @@ void drawBoard(SDL_Renderer* renderer, int w, int h){
 
     for(int i = 0; i<8; i++){
         for(int j = 0; j<8; j++){
-            char current = fen[iMap];
-
-            if(current == '/'){
-                iMap++;
-                j--;
-                continue;
-            }
-
-            if(std::isdigit(current)){
-                j += (current-'0')-1;
-                iMap++;
-                continue;
-            }
+            char current = board[i][j];
 
             // pezzo
             SDL_Texture* tex = textures[current];
@@ -84,6 +92,8 @@ int main(){
         return 1;
     }
 
+    loadFEN(fen, board);
+
     textures['p'] = IMG_LoadTexture(renderer, "img/pieces/p.png");
     textures['P'] = IMG_LoadTexture(renderer, "img/pieces/P.png");
     textures['n'] = IMG_LoadTexture(renderer, "img/pieces/n.png");
@@ -100,19 +110,41 @@ int main(){
 
     bool needed = true;
     bool running = true;
+    int Sx, Sy;
     SDL_Event event;
     while(running){
         while(SDL_PollEvent(&event)){
             if(event.type == SDL_QUIT){
                 running = false;
-            }
-            if(event.type == SDL_WINDOWEVENT){
+            }else if(event.type == SDL_WINDOWEVENT){
                 if(event.window.event == SDL_WINDOWEVENT_RESIZED) {
                     w = event.window.data1;
                     h = event.window.data2;
 
                     SDL_RenderSetViewport(renderer, NULL);
                 }
+            }else if(event.type == SDL_MOUSEBUTTONDOWN){
+                int x, y;
+                SDL_GetMouseState(&x, &y);
+
+                x -= offsetX; y -= offsetY;
+
+                x /= (boardSize/8); y /= (boardSize/8);
+
+                if(board[y][x] != '.'){
+                    Sx = x;
+                    Sy = y;
+                }
+            }else if(event.type == SDL_MOUSEBUTTONUP){
+                int x, y;
+                SDL_GetMouseState(&x, &y);
+
+                x -= offsetX; y -= offsetY;
+
+                x /= (boardSize/8); y /= (boardSize/8);
+
+                board[y][x] = board[Sy][Sx];
+                board[Sy][Sx] = '.';
             }
         }
 
