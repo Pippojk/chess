@@ -143,8 +143,10 @@ int main(){
 
                 x /= (boardSize/8); y /= (boardSize/8);
 
-                board[y][x] = board[Sy][Sx];
-                board[Sy][Sx] = '.';
+                if(x != Sx || y != Sy){
+                    board[y][x] = board[Sy][Sx];
+                    board[Sy][Sx] = '.';
+                }
             }
         }
 
