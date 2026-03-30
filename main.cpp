@@ -3,6 +3,9 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <map>
+#include <vector>
+#include <cctype>
+
 
 int bk1[4] = {105, 220, 76, 255};
 int bk2[4] = {47,47, 47, 255};
@@ -10,6 +13,19 @@ int bk2[4] = {47,47, 47, 255};
 std::string fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR";
 
 char board[8][8];
+
+struct Move{
+    int x, y;
+};
+
+std::vector<Move> moves;
+
+//per sapere se le torri o i re si sono mossi li rapresento 
+//in queste due liste, la lettura e da sinistra a destra, dall'alto 
+//al basso, quindi il primo 0 dei re e il re nero e cosi via
+int kingMoved[2] = {0, 0};
+int rookMoved[4] = {0, 0, 0, 0};
+
 
 std::map<char, SDL_Texture*> textures;
 
@@ -20,9 +36,9 @@ void loadFEN(const std::string& fen, char board[8][8]){
     for(char c : fen){
         if(c == '/'){ i++; j = 0; continue; }
         if(std::isdigit(c)){
-            j += c - '0';
             for(int k = 0; k< c-'0'; k++){
-                board[i][k] = '.';
+                board[i][j] = '.';
+                j ++;
             }
         } else {
             board[i][j] = c;
@@ -67,6 +83,203 @@ void drawBoard(SDL_Renderer* renderer, int w, int h){
             iMap++;
         }
     }
+}
+
+void pawnMoves(int x, int y, bool isWhite){
+    if(isWhite){
+        if(y > 0 && board[y-1][x] == '.'){
+            moves.push_back({x, y-1});
+        }
+        if(y == 6 && board[y-1][x] == '.' && board[y-2][x] == '.'){
+            moves.push_back({x, y-2});
+        }
+        if(y > 0 && islower(board[y-1][x+1])){
+            moves.push_back({x+1, y-1});
+        }
+        if(y > 0 && islower(board[y-1][x-1])){
+            moves.push_back({x-1, y-1});
+        }
+    }else{
+        if(y > 0 && board[y+1][x] == '.'){
+            moves.push_back({x, y+1});
+        }
+        if(y == 1 && board[y+1][x] == '.' && board[y+2][x] == '.'){
+            moves.push_back({x, y+2});
+        }
+        if(y > 0 && isupper(board[y+1][x+1])){
+            moves.push_back({x+1, y+1});
+        }
+        if(y > 0 && isupper(board[y+1][x-1])){
+            moves.push_back({x-1, y+1});
+        }
+    }
+}
+
+void rookMoves(int x, int y, bool isWhite){
+    int i = y+1;
+    while(board[i][x] == '.'){
+        moves.push_back({x, i});
+        i ++;
+    }
+    if(isWhite){
+        if(islower(board[i][x])) moves.push_back({x, i});
+    }else{
+       if(isupper(board[i][x])) moves.push_back({x, i});
+    }
+
+    i = y-1;
+    while(board[i][x] == '.'){
+        moves.push_back({x, i});
+        i --;
+    }
+    if(isWhite){
+        if(islower(board[i][x])) moves.push_back({x, i});
+    }else{
+       if(isupper(board[i][x])) moves.push_back({x, i});
+    }
+
+    i = x-1;
+    while(board[y][i] == '.'){
+        moves.push_back({i, y});
+        i --;
+    }
+    if(isWhite){
+        if(islower(board[y][i])) moves.push_back({i, y});
+    }else{
+       if(isupper(board[y][i])) moves.push_back({i, y});
+    }
+        
+    i = x+1;
+    while(board[y][i] == '.'){
+        moves.push_back({i, y});
+        i ++;
+    }
+    if(isWhite){
+        if(islower(board[y][i])) moves.push_back({i, y});
+    }else{
+       if(isupper(board[y][i])) moves.push_back({i, y});
+    }
+}
+
+void kingMoves(int x, int y, bool isWhite){
+    int kingMoves[8][2] = {{0, 1}, {0, -1}, {1, 0}, {-1, 0}, {1, 1}, {-1, 1}, {1, -1}, {-1, -1}};
+
+    for(auto m : kingMoves){
+        if(board[y+m[0]][x+m[1]] == '.'){
+            moves.push_back({x+m[1], y+m[0]});
+        }else if(isWhite){
+            if(islower(board[y+m[0]][x+m[1]])){
+                moves.push_back({x+m[1], y+m[0]});
+            }
+        }else{
+            if(isupper(board[y+m[0]][x+m[1]])){
+                moves.push_back({x+m[1], y+m[0]});
+            }
+        }
+    }
+
+    if(isWhite){
+        if(kingMoved[1] == 0 && rookMoved[3] == 0){
+            if(board[7][5] == '.' && board[7][6] == '.') moves.push_back({6, 7});
+        }
+        if(kingMoved[1] == 0 && rookMoved[2] == 0){
+            if(board[7][3] == '.' && board[7][2] == '.' && board[7][1] == '.') moves.push_back({2, 7});    
+        }
+    }else{
+        if(kingMoved[0] == 0 && rookMoved[1] == 0){
+            if(board[0][5] == '.' && board[0][6] == '.') moves.push_back({6, 0});
+        }
+        if(kingMoved[0] == 0 && rookMoved[0] == 0){
+            if(board[0][3] == '.' && board[0][2] == '.' && board[0][1] == '.') moves.push_back({2, 0});    
+        }
+    }
+}
+
+void bishopMoves(int x, int y, bool isWhite){
+    int i = x+1;
+    int j = y+1;
+    while(board[j][i] == '.'){
+        moves.push_back({i, j});
+        i ++;
+        j ++;
+    }
+    if(isWhite){ 
+        if(islower(board[j][i])) moves.push_back({i, j});
+    }else{
+        if(isupper(board[j][i])) moves.push_back({i, j});
+    }
+
+    i = x+1;
+    j = y-1;
+    while(board[j][i] == '.'){
+        moves.push_back({i, j});
+        i ++;
+        j --;
+    }
+    if(isWhite){ 
+        if(islower(board[j][i])) moves.push_back({i, j});
+    }else{
+        if(isupper(board[j][i])) moves.push_back({i, j});
+    }
+
+    i = x-1;
+    j = y+1;
+    while(board[j][i] == '.'){
+        moves.push_back({i, j});
+        i --;
+        j ++;
+    }
+    if(isWhite){ 
+        if(islower(board[j][i])) moves.push_back({i, j});
+    }else{
+        if(isupper(board[j][i])) moves.push_back({i, j});
+    }
+
+    i = x-1;
+    j = y-1;
+    while(board[j][i] == '.'){
+        moves.push_back({i, j});
+        i --;
+        j --;
+    }
+    if(isWhite){ 
+        if(islower(board[j][i])) moves.push_back({i, j});
+    }else{
+        if(isupper(board[j][i])) moves.push_back({i, j});
+    }
+}
+
+void queenMoves(int x, int y, bool isWhite){
+    rookMoves(x, y, isWhite);
+    bishopMoves(x,  y,  isWhite);
+}
+
+void knightMoves(int x, int y, bool isWhite){
+    int knightMoves[8][2] = {{1, 2}, {-1, 2}, {2, 1}, {2, -1}, {1, -2}, {-1, -2}, {-2, 1}, {-2, -1}};
+    for(auto m : knightMoves){
+        if(board[y+m[1]][x+m[0]] == '.'){
+            moves.push_back({x+m[0], y+m[1]});
+        }else if(isWhite){
+            if(islower(board[y+m[1]][x+m[0]])){
+                moves.push_back({x+m[0], y+m[1]});
+            }
+        }else if(!isWhite){
+            if(isupper(board[y+m[1]][x+m[0]])){
+                moves.push_back({x+m[0], y+m[1]});
+            }
+        }
+    }
+}
+
+void checkLegalMoves(int startX, int startY){
+    char piece = board[startY][startX];
+
+    if(piece == 'P' || piece == 'p') pawnMoves(startX, startY, isupper(piece));
+    else if(piece == 'R' || piece == 'r') rookMoves(startX, startY, isupper(piece));
+    else if(piece == 'K' || piece == 'k') kingMoves(startX, startY, isupper(piece));
+    else if(piece == 'B' || piece == 'b') bishopMoves(startX, startY, isupper(piece));
+    else if(piece == 'Q' || piece == 'q') queenMoves(startX, startY, isupper(piece));
+    else if(piece == 'N' || piece == 'n') knightMoves(startX, startY, isupper(piece));
 }
 
 
@@ -142,6 +355,8 @@ int main(){
                     Sx = x;
                     Sy = y;
                 }
+
+                checkLegalMoves(Sx, Sy);
             }else if(event.type == SDL_MOUSEBUTTONUP){
                 int x, y;
                 SDL_GetMouseState(&x, &y);
@@ -150,12 +365,57 @@ int main(){
 
                 x /= (boardSize/8); y /= (boardSize/8);
 
-                if(x != Sx || y != Sy){
-                    board[y][x] = board[Sy][Sx];
-                    board[Sy][Sx] = '.';
+                Move SelectedMove = {x, y};
+
+                //controllo se mosso il re 
+
+                for(Move m : moves){
+                    if((x != Sx || y != Sy) && SelectedMove.x == m.x && SelectedMove.y == m.y){
+                        //controllo se si sono mossi re o torri per arrocco
+                        if(board[Sy][Sx] == 'k'){
+                            kingMoved[0] = 1;
+                        }else if(board[Sy][Sx] == 'K'){
+                            kingMoved[1] = 1;
+                        }else if(board[Sy][Sx] == 'r' && Sy == 0 && Sx == 0){
+                            kingMoved[0] = 1;
+                        }else if(board[Sy][Sx] == 'r' && Sy == 0 && Sx == 7){
+                            kingMoved[1] = 1;
+                        }else if(board[Sy][Sx] == 'R' && Sy == 7 && Sx == 0){
+                            kingMoved[2] = 1;
+                        }else if(board[Sy][Sx] == 'R' && Sy == 7 && Sx == 7){
+                            kingMoved[3] = 1;
+                        }
+
+                        //controllo se si sta arroccando per spostare torre
+                        if(board[Sy][Sx] == 'k'){
+                            if(Sx - x > 1 || Sx - x < 1){
+                                if(x == 2){
+                                    board[0][3] = 'r';
+                                    board[0][0] = '.';
+                                }else{
+                                    board[0][5] = 'r';
+                                    board[0][7] = '.';
+                                }
+                            }
+                        }else if(board[Sy][Sx] == 'K'){
+                            if(Sx - x > 1 || Sx - x < 1){
+                                if(x == 2){
+                                    board[7][3] = 'R';
+                                    board[7][0] = '.';
+                                }else{
+                                    board[7][5] = 'R';
+                                    board[7][7] = '.';
+                                }
+                            }
+                        }
+                        board[y][x] = board[Sy][Sx];
+                        board[Sy][Sx] = '.';
+                    }
                 }
+                    
 
                 Sy = -1; Sx = -1;
+                moves.clear();
             }
         }
 
