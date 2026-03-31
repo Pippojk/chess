@@ -18,6 +18,9 @@ struct Move{
     int x, y;
 };
 
+Move BenPassant[2] = {{-1, -1}, {-1, -1}};//il primo e sempre a sinistra il secondo sempre a destra
+Move WenPassant[2] = {{-1, -1}, {-1, -1}};//il primo e sempre a sinistra il secondo sempre a destra
+
 std::vector<Move> moves;
 
 //per sapere se le torri o i re si sono mossi li rapresento 
@@ -25,6 +28,8 @@ std::vector<Move> moves;
 //al basso, quindi il primo 0 dei re e il re nero e cosi via
 int kingMoved[2] = {0, 0};
 int rookMoved[4] = {0, 0, 0, 0};
+
+bool isWhiteTurn = true;
 
 
 std::map<char, SDL_Texture*> textures;
@@ -87,28 +92,69 @@ void drawBoard(SDL_Renderer* renderer, int w, int h){
 
 void pawnMoves(int x, int y, bool isWhite){
     if(isWhite){
+        //controllo se posso fare l'enPassant
+        if(WenPassant[0].x == x && WenPassant[0].y == y){
+            moves.push_back({x+1, y-1});
+        }
+
+        if(WenPassant[1].x == x && WenPassant[1].y == y){
+            moves.push_back({x-1, y-1});
+        }
+
+        //mossa di uno avanti
         if(y > 0 && board[y-1][x] == '.'){
             moves.push_back({x, y-1});
         }
+        //mossa di due avanti
         if(y == 6 && board[y-1][x] == '.' && board[y-2][x] == '.'){
             moves.push_back({x, y-2});
+
+            //controllo per pedoni che possono fare enPassant
+            if(islower(board[y-2][x-1])){
+                BenPassant[0] = {x-1, y-2};
+            }
+            if(islower(board[y-2][x+1])){
+                BenPassant[1] = {x+1, y-2};
+            }
         }
+        //mangiare a destra
         if(y > 0 && islower(board[y-1][x+1])){
             moves.push_back({x+1, y-1});
         }
+        //mangiare a sinistra
         if(y > 0 && islower(board[y-1][x-1])){
             moves.push_back({x-1, y-1});
         }
     }else{
+        //controllo se posso fare l'enPassant
+        if(BenPassant[0].x == x && BenPassant[0].y == y){
+            moves.push_back({x+1, y+1});
+        }
+
+        if(BenPassant[1].x == x && BenPassant[1].y == y){
+            moves.push_back({x-1, y+1});
+        }
+
+        //mossa di uno avanti
         if(y > 0 && board[y+1][x] == '.'){
             moves.push_back({x, y+1});
         }
+        //mossa di due avanti
         if(y == 1 && board[y+1][x] == '.' && board[y+2][x] == '.'){
             moves.push_back({x, y+2});
+
+            if(isupper(board[y+2][x-1])){
+                WenPassant[0] = {x-1, y+2};
+            }
+            if(isupper(board[y+2][x+1])){
+                WenPassant[1] = {x+1, y+2};
+            }
         }
+        //mangiare a destra
         if(y > 0 && isupper(board[y+1][x+1])){
             moves.push_back({x+1, y+1});
         }
+        //mangiare a sinistra
         if(y > 0 && isupper(board[y+1][x-1])){
             moves.push_back({x-1, y+1});
         }
@@ -352,8 +398,10 @@ int main(){
                 x /= (boardSize/8); y /= (boardSize/8);
 
                 if(board[y][x] != '.'){
-                    Sx = x;
-                    Sy = y;
+                    if((isWhiteTurn && isupper(board[y][x])) || (!isWhiteTurn && islower(board[y][x]))){
+                        Sx = x;
+                        Sy = y;
+                    }
                 }
 
                 checkLegalMoves(Sx, Sy);
@@ -408,12 +456,54 @@ int main(){
                                 }
                             }
                         }
+
+                        //controllo enPassant e promozione
+                        if(board[Sy][Sx] == 'p'){
+                            //controllo promozione
+                            if(y == 7){
+                                char selected;
+                                std::cout<<"scegliere in cosa promuovere(b, q, r, n): ";
+                                std::cin>>selected;
+                                if(selected != 'b' && selected != 'q' && selected != 'r' && selected != 'n'){
+                                    return 0;
+                                }
+                                board[Sy][Sx] = '.';
+                                board[y][x] = selected;
+                                isWhiteTurn = !isWhiteTurn;
+                                break;
+                            }
+                            //controllo enPassant
+                            if(x!=Sx && y!=Sy && board[y][x] == '.'){
+                                board[y-1][x] = '.';
+                            }
+                        }else if(board[Sy][Sx] == 'P'){
+                            //controllo promozione
+                            if(y == 0){
+                                char selected;
+                                std::cout<<"scegliere in cosa promuovere(B, Q, R, N): ";
+                                std::cin>>selected;
+                                if(selected != 'B' && selected != 'Q' && selected != 'R' && selected != 'N'){
+                                    return 0;
+                                }
+                                board[Sy][Sx] = '.';
+                                board[y][x] = selected;
+                                isWhiteTurn = !isWhiteTurn;
+                                break;
+                            }
+
+                            if(x!=Sx && y!=Sy && board[y][x] == '.'){
+                                board[y+1][x] = '.';
+                            }
+                        }
+
                         board[y][x] = board[Sy][Sx];
                         board[Sy][Sx] = '.';
+                        if(isWhiteTurn){ WenPassant[0] = {-1, -1}; WenPassant[1] = {-1, -1};}
+                        else {BenPassant[0] = {-1, -1}; BenPassant[1] = {-1, -1};}
+                        isWhiteTurn = !isWhiteTurn;
                     }
                 }
                     
-
                 Sy = -1; Sx = -1;
                 moves.clear();
             }
