@@ -1,0 +1,144 @@
+#include <iostream>
+#include "engine.h"
+#include "game.h"
+
+void Engine::getboard(std::vector<std::vector<char>> chessboard){
+    simulation.changeBoard(chessboard);
+}
+
+float Engine::getEvaluation(){
+    return evaluation;
+}
+
+void Engine::setEvaluation(){
+    for(int i = 0; i<8; i++){
+        for(int j = 0; j<8; j++){
+            switch (simulation.board[i][j])
+            {
+            case 'p':
+                evaluation -= 1.00f;
+                break;
+            case 'P':
+                evaluation += 1.00f;
+                break;
+            case 'b':
+            case 'n':
+                evaluation -= 3.00f;
+                break;
+            case 'B':
+            case 'N':
+                evaluation += 3;
+                break;
+            case 'r':
+                evaluation -= 5;
+                break;
+            case 'R':
+                evaluation += 5;
+                break;
+            case 'q':
+                evaluation -= 9;
+                break;
+            case 'Q':
+                evaluation += 9;
+                break;
+            
+            default:
+                break;
+            }
+        }
+    }
+}
+
+void Engine::findMoves(bool isWhiteTurn){
+    clearMoves();
+    for(int i = 0; i<8; i++){
+        for(int j = 0; j<8; j++){
+            if(simulation.board[i][j] != '.'){
+                if(isWhiteTurn && isupper(simulation.board[i][j])){
+                    fromToMove m;
+                    m.inizio = {j, i};
+                    simulation.checkLegalMoves(j, i);
+                    m.possibili = simulation.getMoves();
+                    moves.push_back(m);
+                }else if(!isWhiteTurn && islower(simulation.board[i][j])){
+                    fromToMove m;
+                    m.inizio = {j, i};
+                    simulation.checkLegalMoves(j, i);
+                    m.possibili = simulation.getMoves();
+                    moves.push_back(m);
+                }
+                
+            }
+        }
+    }
+}
+
+int findMin(std::vector<int> lista){
+    int min = 0;
+    for(int i = 1; i < lista.size(); i++){
+        if(lista[i] < lista[min]){
+            min = i;
+        }
+    }
+
+    return min;
+}
+
+int findMax(std::vector<int> lista){
+    int max = 0;
+    for(int i = 1; i < lista.size(); i++){
+        if(lista[i] > lista[max]){
+            max = i;
+        }
+    }
+
+    return max;
+}
+
+int Engine::tryMove(Move start, Move end){
+    std::vector<std::vector<char>> screenBoard(8, std::vector<char>(8));
+    for(int i = 0; i<8; i++){
+        for(int j = 0; j<8; j++){
+            screenBoard[i][j] = simulation.board[i][j];
+        }
+    }
+
+    simulation.board[end.y][end.x] = simulation.board[start.y][start.x];
+    simulation.board[start.y][start.x] = '.';
+
+    evaluation = 0.00f;
+    setEvaluation();
+
+    getboard(screenBoard);
+
+    return getEvaluation();
+}
+
+fromToMove Engine::shearch(int deep){
+    if(moves.empty()) return fromToMove{};
+    std::vector<int> best;
+    for(auto m : moves){
+        std::vector<int> ris;
+        for(int i = 0; i<m.possibili.size(); i++){
+            ris.push_back(tryMove(m.inizio, m.possibili[i]));
+        }
+        if(ris.empty()) continue;
+        best.push_back(ris[findMin(ris)]);
+    }
+    int index = findMin(best);
+
+    fromToMove result =  moves[index];
+
+    std::vector<int> ris;
+    for(int i = 0; i < (int)result.possibili.size(); i++){
+        ris.push_back(tryMove(result.inizio, result.possibili[i]));
+    }
+    if(ris.empty()) return fromToMove{};
+    result.best = result.possibili[findMin(ris)];
+
+    return result;
+}
+
+void Engine::clearMoves(){
+    moves.clear();
+}
